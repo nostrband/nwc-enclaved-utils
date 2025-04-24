@@ -6,7 +6,7 @@ Utilities to help work with [nwc-enclaved](https://github.com/nostrband/nwc-encl
 
 Here is how you discover NWC wallet services:
 
-```
+```js
   import { discoverWalletServices } from "nwc-enclaved-utils";
   const services = await discoverWalletServices();
   console.log("services", services);
@@ -14,7 +14,7 @@ Here is how you discover NWC wallet services:
 
 Might print results like:
 
-```
+```js
 services [
   {
     pubkey: '67122fa1b502e0ef3467fc8248af81f7291a0299ddebfcfed81bbb0c745f005c', // NWC servicePubkey
@@ -40,7 +40,7 @@ After you discover some wallet services you can use them.
 
 Create [NWC](https://github.com/nostr-protocol/nips/blob/master/47.md) connection string to use with your NWC client:
 
-```
+```js
 import { discoverWalletServices } from "nwc-enclaved-utils";
 import { generateSecretKey } from "nostr-tools";
 
@@ -63,7 +63,7 @@ console.log("nwcString", nwcString);
 
 This NWC string can be used with wallets like [Alby Go](https://albygo.com/) or NWC SDK libraries like [Alby SDK](https://github.com/getAlby/js-sdk/blob/master/docs/nwc.md):
 
-```
+```js
 import { nwc } from "@getalby/sdk";
 
 const nwcString = "..."; // see example above 
@@ -88,7 +88,7 @@ console.log("invoice", invoince);
 To create an LN address with zaps support you might use a service like [zap-land](https://github.com/nostrband/zap-land). It's 
 a very simple service that translates a properly formatted LN address into a call to your `nwc-enclaved` wallet:
 
-```
+```js
 import { nip19 } from "nostr-tools";
 
 // discover a wallet service as above
@@ -114,7 +114,7 @@ console.log("lnAddress", lnAddress);
 
 Now you can publish a Nostr profile with this zap address and receive zaps:
 
-```
+```js
 // your LN address from example above
 const lnAddress = "...";
 
