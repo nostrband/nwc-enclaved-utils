@@ -1,0 +1,16 @@
+{
+	"compilerOptions": {
+		"esModuleInterop": true,
+		"target": "ES6",
+		"module": "ESNext",
+		"moduleResolution": "node",
+		"strict": true,
+		"skipLibCheck": true,
+		"outDir": "dist",
+		"declaration": true
+	},
+	"ts-node": {
+    "esm": true
+  },
+	"include": ["src", "example.js"]
+}

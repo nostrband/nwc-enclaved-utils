@@ -1,0 +1,89 @@
+import { WebSocket } from "ws";
+import { discoverWalletServices } from "./src";
+import {
+  SimplePool,
+  finalizeEvent,
+  generateSecretKey,
+  getPublicKey,
+  nip19,
+} from "nostr-tools";
+import { bytesToHex } from "@noble/hashes/utils";
+import { nwc } from "@getalby/sdk";
+
+// @ts-ignore
+global.WebSocket ??= WebSocket;
+
+async function test() {
+  const services = await discoverWalletServices();
+  console.log("services", services);
+
+  const service = services[0];
+  const walletPrivkey = generateSecretKey();
+  const nwcString = `nostr+walletconnect://${service.pubkey}?relay=${
+    service.relays[0]
+  }&secret=${bytesToHex(walletPrivkey)}`;
+  console.log("nwcString", nwcString);
+
+  const nwcClient = new nwc.NWCClient({
+    nostrWalletConnectUrl: nwcString,
+  });
+
+  const balance = await nwcClient.getBalance();
+  console.log("balance", balance);
+
+  const invoince = await nwcClient.makeInvoice({ amount: 10000 });
+  console.log("invoice", invoince);
+
+  // your wallet service public key
+  const walletServicePubkey = service.pubkey;
+
+  // client public key
+  const clientPublicKey = getPublicKey(walletPrivkey);
+
+  // wallet service npub
+  const walletServiceNpub = nip19.npubEncode(walletServicePubkey);
+
+  // client npub
+  const clientNpub = nip19.npubEncode(clientPublicKey);
+
+  // LN address
+  const lnAddress = `${clientNpub}@${walletServiceNpub}.zap.land`;
+  console.log("lnAddress", lnAddress);
+
+  // outbox relays
+  const relays = [
+    "wss://purplepag.es",
+    "wss://relay.damus.io",
+    "wss://relay.primal.net",
+    "wss://relay.nos.social",
+  ];
+
+  const profileEvent = finalizeEvent(
+    {
+      kind: 0,
+      created_at: Math.floor(Date.now() / 1000),
+      content: JSON.stringify({
+        name: "test",
+        lud16: lnAddress,
+      }),
+      tags: [],
+    },
+    walletPrivkey
+  );
+  await Promise.allSettled(new SimplePool().publish(relays, profileEvent));
+
+  const relaysEvent = finalizeEvent(
+    {
+      kind: 10002,
+      created_at: Math.floor(Date.now() / 1000),
+      content: "",
+      tags: relays.map((r) => ["r", r]),
+    },
+    walletPrivkey
+  );
+  await Promise.allSettled(new SimplePool().publish(relays, relaysEvent));
+
+  console.log("npub", nip19.npubEncode(profileEvent.pubkey));
+}
+
+test();
