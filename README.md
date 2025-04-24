@@ -89,7 +89,7 @@ To create an LN address with zaps support you might use a service like [zap-land
 a very simple service that translates a properly formatted LN address into a call to your `nwc-enclaved` wallet:
 
 ```js
-import { nip19 } from "nostr-tools";
+import { nip19, getPublicKey } from "nostr-tools";
 
 // discover a wallet service as above
 // generate client private key as above
@@ -115,6 +115,9 @@ console.log("lnAddress", lnAddress);
 Now you can publish a Nostr profile with this zap address and receive zaps:
 
 ```js
+
+import { generateSecretKey, finalizeEvent, SimplePool } from "nostr-tools";
+
 // your LN address from example above
 const lnAddress = "...";
 
