@@ -143,7 +143,7 @@ const profileEvent = finalizeEvent(
     }),
     tags: [],
   },
-  walletPrivkey
+  privkey
 );
 await Promise.allSettled(new SimplePool().publish(relays, profileEvent));
 
@@ -155,7 +155,7 @@ const relaysEvent = finalizeEvent(
     content: "",
     tags: relays.map((r) => ["r", r]),
   },
-  walletPrivkey
+  privkey
 );
 await Promise.allSettled(new SimplePool().publish(relays, relaysEvent));
 
