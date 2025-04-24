@@ -83,7 +83,7 @@ console.log("invoice", invoince);
 
 ```
 
-## Lighting Network Address and Nostr Zaps
+## Lightning Network Address and Nostr Zaps
 
 To create an LN address with zaps support you might use a service like [zap-land](https://github.com/nostrband/zap-land). It's 
 a very simple service that translates a properly formatted LN address into a call to your `nwc-enclaved` wallet:
