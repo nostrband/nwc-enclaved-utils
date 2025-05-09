@@ -1,4 +1,12 @@
-import { SimplePool } from "nostr-tools";
+import {
+  Event,
+  SimplePool,
+  finalizeEvent,
+  generateSecretKey,
+  getPublicKey,
+  nip19,
+} from "nostr-tools";
+import { bytesToHex } from "@noble/hashes/utils";
 
 export interface WalletService {
   pubkey: string;
@@ -7,20 +15,6 @@ export interface WalletService {
   maxSendable: number;
   maxBalance: number;
 }
-
-const DEFAULT_RELAYS = [
-  "wss://relay.damus.io/",
-  "wss://relay.primal.net/",
-  "wss://relay.nostr.band/all",
-];
-
-const OUTBOX_RELAYS = [
-  "wss://purplepag.es",
-  "wss://relay.primal.net",
-  "wss://relay.nostr.band/all",
-  "wss://user.kindpag.es",
-  "wss://relay.nos.social",
-];
 
 export function normalizeRelay(r: string) {
   try {
@@ -33,15 +27,27 @@ export function normalizeRelay(r: string) {
   } catch {}
 }
 
-export async function discoverWalletServices(
-  relays?: string[]
-): Promise<WalletService[]> {
-  relays = relays || DEFAULT_RELAYS;
+export async function discoverWalletServices(opts?: {
+  relays?: string[];
+  maxBalance?: number;
+}): Promise<WalletService[]> {
+  let { relays, maxBalance } = opts || {};
+
+  const DEFAULT_INFO_RELAYS = [
+    "wss://relay.nos.social",
+    "wss://relay.damus.io",
+    "wss://relay.primal.net",
+    "wss://relay.nostr.band/all",
+  ];
+
+  relays = relays || DEFAULT_INFO_RELAYS;
 
   const pool = new SimplePool();
   const events = await pool.querySync(relays, {
     kinds: [13196],
-    since: Math.floor(Date.now() / 1000) - 120,
+    "#o": ["true"],
+    // FIXME only select prod instances
+    since: Math.floor(Date.now() / 1000) - 30 * 60, // last 30 minutes
     limit: 10,
   });
 
@@ -51,31 +57,125 @@ export async function discoverWalletServices(
   );
   if (!validEvents.length) return [];
 
-  const pubkeys = validEvents.map((e) => e.pubkey);
-  const relayEvents = await pool.querySync(OUTBOX_RELAYS, {
-    kinds: [10002],
-    authors: pubkeys,
-  });
+  const tag = (e: Event, name: string) =>
+    e.tags.find((t) => t.length > 1 && t[0] === name)?.[1];
 
   return validEvents
-    .filter((e) => relayEvents.find((r) => r.pubkey === e.pubkey))
-    .map((e) => ({
-      pubkey: e.pubkey,
-      maxSendable: Number(
-        e.tags.find((t) => t.length > 1 && t[0] === "maxSendable")?.[1]
-      ),
-      minSendable: Number(
-        e.tags.find((t) => t.length > 1 && t[0] === "minSendable")?.[1]
-      ),
-      maxBalance: Number(
-        e.tags.find((t) => t.length > 1 && t[0] === "maxBalance")?.[1]
-      ),
-      event: e,
-      relays: relayEvents
-        .find((r) => r.pubkey === e.pubkey)!
-        .tags.filter((t) => t.length > 1 && t[0] === "r")
-        .map((t) => normalizeRelay(t[1]))
-        .filter((r) => !!r),
-    } as WalletService))
-    .filter((s) => s.relays?.length > 0);
+    .map(
+      (e) =>
+        ({
+          pubkey: e.pubkey,
+          maxSendable: Number(tag(e, "maxSendable")),
+          minSendable: Number(tag(e, "minSendable")),
+          maxBalance: Number(tag(e, "maxBalance")),
+          liquidityFeeRate: Number(tag(e, "liquidityFeeRate")),
+          paymentFeeRate: Number(tag(e, "paymentFeeRate")),
+          paymentFeeBase: Number(tag(e, "paymentFeeBase")),
+          walletFeeBase: Number(tag(e, "walletFeeBase")),
+          walletFeePeriod: Number(tag(e, "walletFeePeriod")),
+          open: tag(e, "o") === "true",
+          enclave: tag(e, "t"),
+          event: e,
+          relays: e.tags
+            .filter((t) => t.length > 1 && t[0] === "relay")
+            .map((t) => normalizeRelay(t[1]))
+            .filter((r) => !!r),
+        } as WalletService)
+    )
+    .filter((s) => s.relays?.length > 0)
+    .filter((s) => !maxBalance || s.maxBalance >= maxBalance);
+}
+
+export async function createWallet(maxBalance?: number) {
+  const services = await discoverWalletServices({ maxBalance });
+  // console.log("services", services);
+  if (!services.length) throw new Error("Failed to find a wallet service");
+
+  const service = services[0];
+  const walletPrivkey = generateSecretKey();
+  const nwcString = `nostr+walletconnect://${service.pubkey}?relay=${
+    service.relays[0]
+  }&secret=${bytesToHex(walletPrivkey)}`;
+
+  const clientPublicKey = getPublicKey(walletPrivkey);
+  const lnAddress = `${nip19.npubEncode(clientPublicKey)}@${nip19.npubEncode(
+    service.pubkey
+  )}.zap.land`;
+
+  return {
+    nwcString,
+    lnAddress,
+    service,
+  };
+}
+
+export async function createNostrProfile(
+  info: {
+    name: string;
+    about?: string;
+    picture?: string;
+    lnAddress?: string;
+  },
+  privkey?: Uint8Array
+) {
+  privkey = privkey || generateSecretKey();
+
+  // outbox relays
+  const OUTBOX_RELAYS = [
+    "wss://purplepag.es",
+    "wss://user.kindpag.es",
+    "wss://relay.damus.io",
+    "wss://relay.primal.net",
+    "wss://relay.nos.social",
+  ];
+
+  // profile relays
+  const PROFILE_RELAYS = [
+    "wss://relay.damus.io",
+    "wss://relay.primal.net",
+    "wss://relay.nos.social",
+    "wss://nostr.mom",
+  ];
+
+  const content: any = {
+    name: info.name,
+  };
+  if (info.about) content.about = info.about;
+  if (info.picture) content.picture = info.picture;
+  if (info.lnAddress) content.lud16 = info.lnAddress;
+
+  const profileEvent = finalizeEvent(
+    {
+      kind: 0,
+      created_at: Math.floor(Date.now() / 1000),
+      content: JSON.stringify(content),
+      tags: [],
+    },
+    privkey
+  );
+  await Promise.allSettled(
+    new SimplePool().publish(OUTBOX_RELAYS, profileEvent)
+  );
+
+  const relaysEvent = finalizeEvent(
+    {
+      kind: 10002,
+      created_at: Math.floor(Date.now() / 1000),
+      content: "",
+      tags: PROFILE_RELAYS.map((r) => ["r", r]),
+    },
+    privkey
+  );
+  await Promise.allSettled(
+    new SimplePool().publish(OUTBOX_RELAYS, relaysEvent)
+  );
+
+  // console.log("npub", nip19.npubEncode(profileEvent.pubkey));
+
+  return {
+    privkey,
+    pubkey: getPublicKey(privkey),
+    npub: nip19.npubEncode(profileEvent.pubkey),
+    relays: PROFILE_RELAYS,
+  };
 }
