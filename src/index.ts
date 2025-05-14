@@ -1,5 +1,6 @@
 import {
   Event,
+  Filter,
   SimplePool,
   finalizeEvent,
   generateSecretKey,
@@ -7,6 +8,7 @@ import {
   nip19,
 } from "nostr-tools";
 import { bytesToHex } from "@noble/hashes/utils";
+import { Validator } from "nostr-enclaves";
 
 export interface WalletService {
   pubkey: string;
@@ -27,6 +29,15 @@ export function normalizeRelay(r: string) {
   } catch {}
 }
 
+async function fetchEvents(relays: string[], filter: Filter) {
+  const pool = new SimplePool();
+  try {
+    return await pool.querySync(relays, filter);
+  } finally {
+    pool.close(relays);
+  }
+}
+
 export async function discoverWalletServices(opts?: {
   relays?: string[];
   maxBalance?: number;
@@ -42,23 +53,27 @@ export async function discoverWalletServices(opts?: {
 
   relays = relays || DEFAULT_INFO_RELAYS;
 
-  const pool = new SimplePool();
-  const events = await pool.querySync(relays, {
+  const events = await fetchEvents(relays, {
     kinds: [13196],
     "#o": ["true"],
     // FIXME only select prod instances
+    "#t": ["prod", "dev"],
     since: Math.floor(Date.now() / 1000) - 30 * 60, // last 30 minutes
     limit: 10,
   });
 
-  // FIXME verify attestation etc
-  const validEvents = events.filter(
-    (e) => !!e.tags.find((t) => t.length > 1 && t[0] === "minSendable")
-  );
-  if (!validEvents.length) return [];
-
   const tag = (e: Event, name: string) =>
     e.tags.find((t) => t.length > 1 && t[0] === name)?.[1];
+
+  const validator = new Validator();
+  const validEvents = events
+    .filter(
+      // minimal semantic check
+      (e) =>
+        !!tag(e, "minSendable") && !!tag(e, "relay") && tag(e, "o") === "true"
+    )
+    .filter((e) => validator.validateEnclavedEvent(e));
+  if (!validEvents.length) return [];
 
   return validEvents
     .map(
@@ -88,7 +103,6 @@ export async function discoverWalletServices(opts?: {
 
 export async function createWallet(maxBalance?: number) {
   const services = await discoverWalletServices({ maxBalance });
-  // console.log("services", services);
   if (!services.length) throw new Error("Failed to find a wallet service");
 
   const service = services[0];
@@ -153,9 +167,7 @@ export async function createNostrProfile(
     },
     privkey
   );
-  await Promise.allSettled(
-    new SimplePool().publish(OUTBOX_RELAYS, profileEvent)
-  );
+  await Promise.allSettled(new SimplePool().publish(OUTBOX_RELAYS, profileEvent));
 
   const relaysEvent = finalizeEvent(
     {
@@ -166,11 +178,7 @@ export async function createNostrProfile(
     },
     privkey
   );
-  await Promise.allSettled(
-    new SimplePool().publish(OUTBOX_RELAYS, relaysEvent)
-  );
-
-  // console.log("npub", nip19.npubEncode(profileEvent.pubkey));
+  await Promise.allSettled(new SimplePool().publish(OUTBOX_RELAYS, relaysEvent));
 
   return {
     privkey,

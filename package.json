@@ -1,29 +1,47 @@
 {
   "name": "nwc-enclaved-utils",
-  "version": "1.0.2",
-  "description": "",
-  "type": "module",
-  "types": "./dist/index.d.ts",
-  "source": "src/index.ts",
-  "main": "./dist/index.js",
-  "files": [
-    "dist"
-  ],
+  "version": "2.0.6",
+  "description": "Utilities for nwc-enclaved Lightning wallets",
   "author": "artur@nostr.band",
   "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.esm.js",
+  "types": "./dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.esm.js",
+      "require": "./dist/index.cjs",
+      "types": "./dist/types/index.d.ts"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "*": [
+        "dist/types/*"
+      ]
+    }
+  },
+  "files": [
+    "dist",
+    "package.json"
+  ],
+  "source": "src/index.ts",
+  "scripts": {
+    "build": "rollup -c"
+  },
   "dependencies": {
     "@getalby/sdk": "^5.0.0",
+    "@noble/hashes": "^1.8.0",
+    "nostr-enclaves": "^2.0.8",
     "nostr-tools": "^2.11.0"
   },
   "devDependencies": {
-    "typescript": "^5.8.2",
-    "ws": "^8.18.1"
-  },
-  "scripts": {
-    "build": "tsc"
-  },
-  "exports": {
-    "types": "./dist/index.d.ts",
-    "default": "./dist/index.js"
+    "@rollup/plugin-commonjs": "^28.0.3",
+    "@rollup/plugin-node-resolve": "^16.0.1",
+    "@rollup/plugin-terser": "^0.4.4",
+    "@rollup/plugin-typescript": "^12.1.2",
+    "rollup": "^4.40.2",
+    "typescript": "^5.8.2"
   }
 }
