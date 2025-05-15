@@ -71,3 +71,10 @@ console.log("profile npub", npub);
 ```
 
 You can also update an existing Nostr profile by setting the `lud16` profile field to your `lnAddress`.
+
+## Vibe coding
+
+Here is a sample prompt we used with Cursor + Claude-3.5 Sonnet to make a simple app that allows users to create lightning wallets:
+
+
+> Let's create a web single page app on js so that users could create a lightning network wallet for themselves. We will use nwc-enclaved-utils library to create wallets. The app should have a title "Create a lightning wallet with one click". Then a button Create wallet, it should use nwc-enclaved-utils to create a wallet. After wallet is created it should display a readonly box under the button, named "NWC connection string" and display the nwcstring there, with a "copy to clipboard" button at the right. Next it should display a readonly input called "LN address" with lnAddress displayed there and a similar copy to clipboard button.  Read the documentation at https://github.com/nostrband/nwc-enclaved-utils first to understand how to use the library. Use minimalistic simple UI components and plain html/js if possible. You only have one shot at it, do not ask questions, try to finish everything in one pass and deliver a working product. 
