@@ -107,14 +107,15 @@ export async function createWallet(maxBalance?: number) {
 
   const service = services[0];
   const walletPrivkey = generateSecretKey();
-  const nwcString = `nostr+walletconnect://${service.pubkey}?relay=${
-    service.relays[0]
-  }&secret=${bytesToHex(walletPrivkey)}`;
 
   const clientPublicKey = getPublicKey(walletPrivkey);
   const lnAddress = `${nip19.npubEncode(clientPublicKey)}@${nip19.npubEncode(
     service.pubkey
   )}.zap.land`;
+
+  const nwcString = `nostr+walletconnect://${service.pubkey}?relay=${
+    service.relays[0]
+  }&secret=${bytesToHex(walletPrivkey)}&lud16=${lnAddress}`;
 
   return {
     nwcString,
@@ -167,7 +168,9 @@ export async function createNostrProfile(
     },
     privkey
   );
-  await Promise.allSettled(new SimplePool().publish(OUTBOX_RELAYS, profileEvent));
+  await Promise.allSettled(
+    new SimplePool().publish(OUTBOX_RELAYS, profileEvent)
+  );
 
   const relaysEvent = finalizeEvent(
     {
@@ -178,7 +181,9 @@ export async function createNostrProfile(
     },
     privkey
   );
-  await Promise.allSettled(new SimplePool().publish(OUTBOX_RELAYS, relaysEvent));
+  await Promise.allSettled(
+    new SimplePool().publish(OUTBOX_RELAYS, relaysEvent)
+  );
 
   return {
     privkey,
