@@ -1,6 +1,6 @@
 {
   "name": "nwc-enclaved-utils",
-  "version": "2.0.8",
+  "version": "2.0.9",
   "description": "Utilities for nwc-enclaved Lightning wallets",
   "author": "artur@nostr.band",
   "license": "MIT",
@@ -36,7 +36,7 @@
   "dependencies": {
     "@getalby/sdk": "^5.0.0",
     "@noble/hashes": "^1.8.0",
-    "nostr-enclaves": "^2.0.8",
+    "nostr-enclaves": "^2.0.15",
     "nostr-tools": "^2.11.0"
   },
   "devDependencies": {
@@ -51,6 +51,7 @@
     "playwright": "^1.52.0",
     "rollup": "^4.40.2",
     "ts-node": "^10.9.2",
+    "tsx": "^4.19.4",
     "typescript": "^5.8.2",
     "vitest": "^1.3.1",
     "ws": "^8.16.0"
