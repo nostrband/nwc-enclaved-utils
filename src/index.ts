@@ -66,13 +66,19 @@ export async function discoverWalletServices(opts?: {
     e.tags.find((t) => t.length > 1 && t[0] === name)?.[1];
 
   const validator = new Validator();
-  const validEvents = events
-    .filter(
-      // minimal semantic check
-      (e) =>
-        !!tag(e, "minSendable") && !!tag(e, "relay") && tag(e, "o") === "true"
-    )
-    .filter((e) => validator.validateEnclavedEvent(e));
+  const validEvents: Event[] = [];
+  for (const event of events.filter(
+    // minimal semantic check
+    (e) =>
+      !!tag(e, "minSendable") && !!tag(e, "relay") && tag(e, "o") === "true"
+  )) {
+    try {
+      await validator.validateEnclavedEvent(event);
+      validEvents.push(event);
+    } catch (e) {
+      console.log("Invalid enclave event", event, e);
+    }
+  }
   if (!validEvents.length) return [];
 
   return validEvents
