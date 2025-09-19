@@ -1,6 +1,6 @@
 {
   "name": "nwc-enclaved-utils",
-  "version": "2.0.10",
+  "version": "2.0.11",
   "description": "Utilities for nwc-enclaved Lightning wallets",
   "author": "artur@nostr.band",
   "license": "MIT",

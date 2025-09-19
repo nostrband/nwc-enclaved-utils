@@ -107,11 +107,22 @@ export async function discoverWalletServices(opts?: {
     .filter((s) => !maxBalance || s.maxBalance >= maxBalance);
 }
 
-export async function createWallet(maxBalance?: number) {
-  const services = await discoverWalletServices({ maxBalance });
-  if (!services.length) throw new Error("Failed to find a wallet service");
+export async function createWallet(options: {
+  maxBalance?: number;
+  service?: { pubkey: string; relay: string };
+}) {
+  let service = options.service;
+  if (!service) {
+    const services = await discoverWalletServices({
+      maxBalance: options.maxBalance,
+    });
+    if (!services.length) throw new Error("Failed to find a wallet service");
+    service = {
+      pubkey: services[0].pubkey,
+      relay: services[0].relays[0],
+    };
+  }
 
-  const service = services[0];
   const walletPrivkey = generateSecretKey();
 
   const clientPublicKey = getPublicKey(walletPrivkey);
@@ -120,7 +131,7 @@ export async function createWallet(maxBalance?: number) {
   )}.zap.land`;
 
   const nwcString = `nostr+walletconnect://${service.pubkey}?relay=${
-    service.relays[0]
+    service.relay
   }&secret=${bytesToHex(walletPrivkey)}&lud16=${lnAddress}`;
 
   return {
